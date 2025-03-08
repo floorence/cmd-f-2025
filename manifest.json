@@ -1,0 +1,17 @@
+{
+    "manifest_version": 3,
+    "name": "HealthShield",
+    "version": "1.0",
+    "description": "AI-powered chrome extension that detects health misinformation on Twitter in real-time.",
+  
+    "icons": {
+    },
+    "content_scripts": [
+      {
+        "js": ["scripts/content.js"],
+        "matches": [
+          "https://x.com/*"
+        ]
+      }
+    ]
+  }
