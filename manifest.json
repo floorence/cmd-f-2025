@@ -10,7 +10,13 @@
       {
         "js": ["scripts/content.js"],
         "matches": [
-          "https://x.com/*"
+          "https://x.com/home"
+        ]
+      },
+      {
+        "js": ["scripts/post.js"],
+        "matches":[
+            "https://x.com/*"
         ]
       }
     ]
