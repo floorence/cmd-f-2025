@@ -1,0 +1,9 @@
+# Node
+node_modules/
+coverage/
+dist/
+
+# Normal Things
+.DS_Store
+.env
+*.log
