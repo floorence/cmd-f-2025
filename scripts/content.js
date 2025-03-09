@@ -1,7 +1,7 @@
 
 const cssclasses = "span.css-1jxf684.r-bcqeeo.r-1ttztb7.r-qvutc0.r-poiln3";
 const backendserver = "";
-const processedTweets = new Set(); //set of strings representing tweet objects
+const processedTweets = new Map(); //set of strings representing tweet objects
 
 // Tweet is {string username; string text;}
 
@@ -34,7 +34,8 @@ function extractTweetElementsAndTweets(elements) {
                         j++;
                     }
                     const tweetObj = {username: username, text: tweet};
-                    const elementTweet = {element: elements[i], tweet: tweetObj};
+                    const lastElementIdx = (j > i + 2) ? j-1 : j;
+                    const elementTweet = {element: elements[lastElementIdx], tweet: tweetObj};
                     elementTweets.push(elementTweet);
                     i = j; // skip elements we already checked
                 }
@@ -99,30 +100,69 @@ const observer = new MutationObserver((mutations) => {
     }
 });
 
+
 // {element: Element, tweet: Tweet} -> void
-function processTweet(elementTweet) {
-    const tweetKey = JSON.stringify(elementTweet.tweet); // Convert object to a unique string
+async function processTweet(elementTweet) {
+    const tweetKey = JSON.stringify(elementTweet.tweet); // Unique tweet key
 
-    if (processedTweets.has(tweetKey)) return; // Skip already processed tweets
+    if (processedTweets.has(tweetKey)) {
+        const existingStatus = processedTweets.get(tweetKey);
+        
+        // If it's still pending (undefined), wait for it to resolve
+        if (existingStatus === undefined) return; 
 
-    tweetMisinfo(elementTweet.tweet.text).then((isMisinformation) => {
-        if (isMisinformation) {
-            console.log("adding warning...");
-            addWarningUI(elementTweet.element);
-        }
+        // If the tweet was found to be misinformation, ensure UI is added
+        if (existingStatus) addWarningUI(elementTweet.element);
+        return;
+    }
+
+    // **Mark as pending immediately** to prevent duplicate calls
+    processedTweets.set(tweetKey, undefined);
+
+    // **Call async misinfo check**
+    const isMisinfo = await tweetMisinfo(elementTweet.tweet.text);
+
+    // **Now store the final result**
+    processedTweets.set(tweetKey, isMisinfo);
+
+    if (isMisinfo) addWarningUI(elementTweet.element);
+}
+
+// Element -> void
+function addWarningUI(tweetElement) {
+    const tweetContainer = tweetElement.closest("article");
+
+    if (!tweetContainer) {
+        console.warn("❌ Could not find tweet container for:", tweetElement);
+        return;
+    }
+
+    // **Final duplicate check before adding UI**
+    if (tweetContainer.querySelector(".misinfo-warning")) {
+        console.log("⚠️ Warning already exists, skipping...");
+        return;
+    }
+
+    const warning = document.createElement("div");
+    warning.textContent = "⚠️ Misinformation detected!";
+    warning.classList.add("misinfo-warning");
+    Object.assign(warning.style, {
+        color: "red",
+        fontWeight: "bold",
+        fontSize: "14px",
+        marginTop: "5px",
+        display: "block",
+        position: "relative",
+        zIndex: "999",
     });
 
-    processedTweets.add(tweetKey); // Store as a unique string
+    // **Delay to ensure tweet is fully loaded**
+    setTimeout(() => {
+        tweetContainer.appendChild(warning);
+        console.log("✅ Successfully added warning:", tweetContainer);
+    }, 500);
 }
 
-// string -> void
-function addWarningUI(element) {
-    const warning = document.createElement('div');
-    warning.textContent = "⚠️ Misinformation detected!";
-    warning.style.color = "red";
-    warning.style.fontWeight = "bold";
-    element.appendChild(warning); // Adjust positioning as needed
-}
 
 
 // Start observing the page (watch for added/removed nodes)
