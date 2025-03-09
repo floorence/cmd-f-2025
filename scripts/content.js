@@ -5,26 +5,28 @@ const processedTweets = new Set(); //set of strings representing tweet objects
 
 // Tweet is {string username; string text;}
 
-// Element[] -> string[]
+// NodeList<Element> -> string[]
 function extractTweets(elements) {
-    const textelements = Array.from(elements).map(span => span.textContent);
+    //const textelements = Array.from(elements).map(span => span.textContent);
     //console.log(textelements);
-    const tweets = extractTweetsForReal(textelements);
-    return tweets;
+    const tweetElements = extractTweetElementsAndTweets(Array.from(elements));
+    return tweetElements.tweets.map(tweet => tweet.text);
 }
 
-// string[] -> Tweet[]
-function extractTweetsForReal(textelements) {
-    const tweets = []; // Tweet[]
-    for (let i = 1; i < textelements.length; i++) {
-        if (textelements[i].length > 0 && textelements[i].charAt(0) === "@") { // find username
-            if (i + 1 < textelements.length && textelements[i+1] === "·") { //double check it's a tweet
-                if (i + 2 < textelements.length) { //double check again 💀😭
-                    const username = textelements[i].substring(1);
+// Element[] -> {element: Element, tweet: Tweet}[]
+// pair elements with corresponding tweet
+function extractTweetElementsAndTweets(elements) {
+    const elementTweets = []; // {element: Element, tweet: Tweet}[]
+    for (let i = 1; i < elements.length; i++) {
+        const textelement = elements[i].textContent;
+        if (textelement.length > 0 && textelement.charAt(0) === "@") { // find username
+            if (i + 1 < elements.length && elements[i+1].textContent === "·") { //double check it's a tweet
+                if (i + 2 < elements.length) { //double check again 💀😭
+                    const username = textelement.substring(1);
                     let tweet = "";
                     let j = i + 2;
                     while (true) { // manage tweet getting split up bc of emojis
-                        const partoftweet = textelements[j];
+                        const partoftweet = elements[j].textContent;
                         if (!isNaN(Number(getNumPart(partoftweet)))) {
                             break;
                         }
@@ -32,12 +34,14 @@ function extractTweetsForReal(textelements) {
                         j++;
                     }
                     const tweetObj = {username: username, text: tweet};
-                    tweets.push(tweetObj);
+                    const elementTweet = {element: elements[i], tweet: tweetObj};
+                    elementTweets.push(elementTweet);
+                    i = j; // skip elements we already checked
                 }
             }
         }
     }
-    return tweets;
+    return elementTweets;
 }
 
 // string -> string
@@ -83,27 +87,28 @@ const observer = new MutationObserver((mutations) => {
         for (const node of mutation.addedNodes) {
             if (node.nodeType === 1) { // Ensure it's an element
                 const elements = node.querySelectorAll(cssclasses)
-                const tweets = extractTweets(elements);
-                if (tweets.length > 0) { 
-                    console.log("Extracted tweets:", tweets);
-                    tweets.forEach(processTweet);
-                    sendTweets(JSON.stringify(tweets));
+                const elementTweets = extractTweetElementsAndTweets(Array.from(elements));
+                
+                if (elementTweets.length > 0) { 
+                    console.log("Extracted tweets:", elementTweets);
+                    elementTweets.forEach(processTweet);
+                    sendTweets(JSON.stringify(elementTweets.map(elementTweet => elementTweet.tweet)));
                 }
             }
         }
     }
 });
 
-// Tweet -> void
-function processTweet(tweet) {
-    const tweetKey = JSON.stringify(tweet); // Convert object to a unique string
+// {element: Element, tweet: Tweet} -> void
+function processTweet(elementTweet) {
+    const tweetKey = JSON.stringify(elementTweet.tweet); // Convert object to a unique string
 
     if (processedTweets.has(tweetKey)) return; // Skip already processed tweets
 
-    tweetMisinfo(tweet.text).then((isMisinformation) => {
+    tweetMisinfo(elementTweet.tweet.text).then((isMisinformation) => {
         if (isMisinformation) {
             console.log("adding warning...");
-            addWarningUI(tweet);
+            addWarningUI(elementTweet.element);
         }
     });
 
@@ -111,12 +116,12 @@ function processTweet(tweet) {
 }
 
 // string -> void
-function addWarningUI(tweet) {
+function addWarningUI(element) {
     const warning = document.createElement('div');
     warning.textContent = "⚠️ Misinformation detected!";
     warning.style.color = "red";
     warning.style.fontWeight = "bold";
-    tweet.appendChild(warning); // Adjust positioning as needed
+    element.appendChild(warning); // Adjust positioning as needed
 }
 
 
