@@ -1,7 +1,11 @@
 
 const cssclasses = "span.css-1jxf684.r-bcqeeo.r-1ttztb7.r-qvutc0.r-poiln3";
 const usernamecssclasses = "div.css-175oi2r.r-1awozwy.r-18u37iz.r-1wbh5a2";
-const backendserver = "https://58a7-142-103-203-209.ngrok-free.app/predict";
+const backendserver = "https://a99c-142-103-203-209.ngrok-free.app/predict";
+const questionmarkicon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="black" stroke-width="2"/>
+    <text x="12" y="18" text-anchor="middle" font-size="14" font-family="Arial" fill="black">?</text>
+    </svg>`;
 let numMisinfos = 0;
 let numPosts = 0;
 let lastUrl = location.href;
@@ -85,6 +89,7 @@ async function tweetMisinfo(tweet) {
 const observer = new MutationObserver((mutations) => {
     if (location.href !== lastUrl) {
         lastUrl = location.href; // Update last known URL
+        processedTweets.clear();
 
         if (isProfilePage()) {
             console.log("profile page");
@@ -160,14 +165,36 @@ function addWarningUI(tweetElement) {
     warning.textContent = "⚠️ Misinformation detected!";
     warning.classList.add("misinfo-warning");
     Object.assign(warning.style, {
+        display: "inline-block",  // Makes it stay on the same line
         color: "red",
         fontWeight: "bold",
         fontSize: "14px",
+        fontFamily: "'Tahoma', sans-serif",
         marginTop: "5px",
         display: "block",
         position: "relative",
         zIndex: "999",
     });
+
+    const infoIcon = document.createElement("span");
+    Object.assign(infoIcon.style, {
+        display: "inline-block",  
+        verticalAlign: "middle",  
+        marginLeft: "5px",  
+        marginTop: "10px",
+        cursor: "pointer",  
+        fontWeight: "bold",
+    });
+    infoIcon.innerHTML = questionmarkicon;
+    infoIcon.title = "This post has been flagged for containing misinformation based on our current training data. Please note that HealthShield can make mistakes; consult a doctor for professional advice.";
+
+    const container = document.createElement("span"); // Wrapper to keep them in one line
+    container.style.display = "inline-flex"; // Ensures they stay on the same line
+    container.style.alignItems = "center"; // Aligns them nicely
+
+    container.appendChild(warning);
+    container.appendChild(infoIcon);
+
 
     // **Find where to place the warning**
     let textContainer = tweetContainer.querySelector('[lang]'); // Finds main text block
@@ -180,7 +207,7 @@ function addWarningUI(tweetElement) {
                 return;
             }
 
-            textContainer.parentNode.appendChild(warning);
+            textContainer.parentNode.appendChild(container);
             //console.log("✅ Successfully added warning:", tweetContainer);
         }, 500);
     } else {
@@ -200,11 +227,31 @@ function addUserWarningUI(userElement) {
         color: "orange",
         fontWeight: "bold",
         fontSize: "14px",
+        fontFamily: "'Tahoma', sans-serif",
         marginLeft: "5px",
         display: "block",
         position: "relative",
         zIndex: "999",
     });
+
+    const infoIcon = document.createElement("span");
+    Object.assign(infoIcon.style, {
+        display: "inline-block",  
+        verticalAlign: "middle",  
+        marginLeft: "5px",  
+        marginTop: "5px",
+        cursor: "pointer",  
+        fontWeight: "bold",
+    });
+    infoIcon.innerHTML = questionmarkicon;
+    infoIcon.title = "This user has been flagged to frequently spread misinformation according to their recent posts.";
+
+    const container = document.createElement("span"); // Wrapper to keep them in one line
+    container.style.display = "inline-flex"; // Ensures they stay on the same line
+    container.style.alignItems = "center"; // Aligns them nicely
+
+    container.appendChild(warning);
+    container.appendChild(infoIcon);
 
     // **Find where to place the warning**
 
@@ -216,7 +263,7 @@ function addUserWarningUI(userElement) {
             return;
         }
 
-       userElement.appendChild(warning);
+       userElement.appendChild(container);
         //console.log("✅ Successfully added warning:", tweetContainer);
     }, 500);
 }
@@ -263,6 +310,16 @@ function getUsernameElement(elements) {
 
 // Start observing the page (watch for added/removed nodes)
 observer.observe(document.body, { childList: true, subtree: true });
+
+if (isProfilePage()) {
+    console.log("profile page");
+    numMisinfos = 0;
+    numPosts = 0;
+    setTimeout(() => {
+        console.log("about to check profile");
+        checkProfile(); 
+    }, 4000);
+}
 
 // Run initially in case tweets are already there
 // main
