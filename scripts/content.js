@@ -1,7 +1,18 @@
 
 const cssclasses = "span.css-1jxf684.r-bcqeeo.r-1ttztb7.r-qvutc0.r-poiln3";
-const backendserver = "";
-const processedTweets = new Map(); //set of strings representing tweet objects
+const backendserver = "https://lk0q2la2il.execute-api.us-east-2.amazonaws.com/HealthShieldStage";
+
+// Load processed tweets from localStorage (if any)
+const processedTweets = new Map();
+/*
+    Object.entries(localStorage.getItem('processedTweets') ? JSON.parse(localStorage.getItem('processedTweets')) : {})
+);*/
+//console.log("processed tweets from local storage", Array.from(processedTweets));
+
+// Save the processed tweets to localStorage for persistence
+/*function saveProcessedTweets() {
+    localStorage.setItem('processedTweets', JSON.stringify(Object.fromEntries(processedTweets)));
+}*/
 
 // Tweet is {string username; string text;}
 
@@ -56,6 +67,7 @@ function getNumPart(str) {
 
 // string -> void
 function sendTweets(tweets) {
+    /*
     fetch(backendserver, {
         method: "POST",
         headers: {
@@ -63,6 +75,7 @@ function sendTweets(tweets) {
         },
         body: tweets,
       }).catch(error => console.error("Request failed:", error));
+      */
 }
 
 // string -> boolean
@@ -91,7 +104,7 @@ const observer = new MutationObserver((mutations) => {
                 const elementTweets = extractTweetElementsAndTweets(Array.from(elements));
                 
                 if (elementTweets.length > 0) { 
-                    console.log("Extracted tweets:", elementTweets);
+                    //console.log("Extracted tweets:", elementTweets);
                     elementTweets.forEach(processTweet);
                     sendTweets(JSON.stringify(elementTweets.map(elementTweet => elementTweet.tweet)));
                 }
@@ -124,6 +137,7 @@ async function processTweet(elementTweet) {
 
     // **Now store the final result**
     processedTweets.set(tweetKey, isMisinfo);
+    //saveProcessedTweets(); 
 
     if (isMisinfo) addWarningUI(elementTweet.element);
 }
@@ -135,13 +149,7 @@ function addWarningUI(tweetElement) {
     if (!tweetContainer) {
         console.warn("❌ Could not find tweet container for:", tweetElement);
         return;
-    }
-
-    // **Final duplicate check before adding UI**
-    if (tweetContainer.querySelector(".misinfo-warning")) {
-        console.log("⚠️ Warning already exists, skipping...");
-        return;
-    }
+    } 
 
     const warning = document.createElement("div");
     warning.textContent = "⚠️ Misinformation detected!";
@@ -156,13 +164,35 @@ function addWarningUI(tweetElement) {
         zIndex: "999",
     });
 
-    // **Delay to ensure tweet is fully loaded**
-    setTimeout(() => {
-        tweetContainer.appendChild(warning);
-        console.log("✅ Successfully added warning:", tweetContainer);
-    }, 500);
+    // **Find where to place the warning**
+    let textContainer = tweetContainer.querySelector('[lang]'); // Finds main text block
+    if (textContainer) {
+        // **Delay to ensure tweet is fully loaded**
+        setTimeout(() => {
+            // **Final duplicate check before adding UI**
+            if (tweetContainer.querySelector(".misinfo-warning")) {
+                console.log("⚠️ Warning already exists, skipping...");
+                return;
+            }
+
+            textContainer.parentNode.appendChild(warning);
+            //console.log("✅ Successfully added warning:", tweetContainer);
+        }, 500);
+    } else {
+        setTimeout(() => {
+            tweetContainer.appendChild(warning);
+            //console.log("✅ Successfully added warning:", tweetContainer);
+        }, 500);
+    }
 }
 
+// Listen for when the user navigates back
+/*
+window.addEventListener('popstate', function() {
+    console.log("Back button pressed, resetting state...");
+    processedTweets.clear();  // Reset the processed tweets state
+    //refreshWarnings();        // Function to re-add warnings to tweets on the page
+});*/
 
 
 // Start observing the page (watch for added/removed nodes)

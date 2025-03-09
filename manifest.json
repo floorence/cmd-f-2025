@@ -8,15 +8,9 @@
     },
     "content_scripts": [
       {
-        "js": ["scripts/content.js", "scripts/ui.js"],
+        "js": ["scripts/content.js"],
         "matches": [
-          "https://x.com/home"
-        ]
-      },
-      {
-        "js": ["scripts/post.js"],
-        "matches":[
-            "https://x.com/*"
+          "https://x.com/*"
         ]
       }
     ]
